@@ -14,6 +14,8 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"os"
+	"net"
 )
 
 const (
@@ -480,7 +482,8 @@ func main() {
 		address       = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
 		timeout       = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
 		pidFile       = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
-		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9150").String()
+		listenAddress = kingpin.Flag("unix-sock", "Address to listen on for web interface and telemetry.").
+			Default("/dev/shm/memcached_exporter.sock").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
 	log.AddFlags(kingpin.CommandLine)
@@ -508,8 +511,9 @@ func main() {
 		prometheus.MustRegister(procExporter)
 	}
 
-	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.Handle(*metricsPath, prometheus.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Memcached Exporter</title></head>
              <body>
@@ -518,6 +522,14 @@ func main() {
              </body>
              </html>`))
 	})
-	log.Infoln("Starting HTTP server on", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	server := http.Server{
+		Handler: mux, // http.DefaultServeMux,
+	}
+	os.Remove(*listenAddress)
+
+	listener, err := net.Listen("unix", *listenAddress)
+	if err != nil {
+		panic(err)
+	}
+	server.Serve(listener)
 }
