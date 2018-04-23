@@ -482,7 +482,7 @@ func main() {
 		address       = kingpin.Flag("memcached.address", "Memcached server address.").Default("localhost:11211").String()
 		timeout       = kingpin.Flag("memcached.timeout", "memcached connect timeout.").Default("1s").Duration()
 		pidFile       = kingpin.Flag("memcached.pid-file", "Optional path to a file containing the memcached PID for additional metrics.").Default("").String()
-		listenAddress = kingpin.Flag("unix-sock", "Address to listen on for web interface and telemetry.").
+		listenAddress = kingpin.Flag("unix-sock", "Address to listen on for unix sock access and telemetry.").
 			Default("/dev/shm/memcached_exporter.sock").String()
 		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
